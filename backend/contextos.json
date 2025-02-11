@@ -1,0 +1,35 @@
+[
+  {
+    "id": 2,
+    "nombre": "Región",
+    "tipo_control": "radio",
+    "opciones": [
+      "Europa",
+      "Asia",
+      "América"
+    ],
+    "texto_contexto": "Este es el contexto para elegir una región geográfica"
+  },
+  {
+    "id": 5,
+    "nombre": "Presupuesto",
+    "tipo_control": "select",
+    "opciones": [
+      "Alto",
+      " Medio",
+      " Bajo"
+    ],
+    "texto_contexto": "Presupuesto"
+  },
+  {
+    "id": 6,
+    "nombre": "Diversion",
+    "tipo_control": "select",
+    "opciones": [
+      "Poca",
+      " algo",
+      " mucha"
+    ],
+    "texto_contexto": "Diversión"
+  }
+]

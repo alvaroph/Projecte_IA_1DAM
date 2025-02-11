@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Generador de Contextos</title>
+  <!-- Bootstrap CSS -->
+  <link
+    rel="stylesheet"
+    href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+  />
+  <script src="https://cdn.jsdelivr.net/npm/showdown@2.0.3/dist/showdown.min.js"></script>
+  <style>
+    /* Estilos adicionales (opcional) */
+    .contexto {
+      margin-bottom: 15px;
+    }
+    #peticion, #respuesta {
+      white-space: pre-wrap; /* Para mantener saltos de línea */
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container my-4">
+    <!-- Título principal -->
+    <h1 class="mb-4 text-center">Chatbot Client Example</h1>
+
+    <!-- Fila donde se incluyen los contextos -->
+    <div class="row mb-4">
+      <div class="col-12">
+        <p class="text-muted">
+            Selecciona las opciones para tu viaje:
+          </p>
+        <div id="contenedor-contextos" class="border row p-3 rounded">
+          <!-- Aquí se inyectarán dinámicamente los controles (select/radio) -->
+          
+        </div>
+      </div>
+    </div>
+
+    <!-- Texto personalizado -->
+    <div class="row mb-3">
+      <div class="col-6">
+        <h4>Texto Personalizado</h4>
+        <textarea
+          id="texto-peticion"
+          class="form-control"
+          rows="3"
+          placeholder="Escribe tu petición aquí..."
+        ></textarea>
+      </div>
+
+      <div class="col-6">
+        <h5>Prompt Generado</h5>
+        <div
+          id="peticion"
+          class="border p-3 rounded"
+          style="min-height: 100px;"
+        ></div>
+      </div>
+    </div>
+
+    <!-- Botones de generación y envío -->
+    <div class="row mb-4">
+      <div class="col-md-6 d-flex justify-content-center justify-content-md-start mb-2">
+        <button id="generarPeticion" class="btn btn-primary">
+          GENERAR
+        </button>
+      </div>
+      <div class="col-md-6 d-flex justify-content-center justify-content-md-end">
+        <button id="enviarPeticion" class="btn btn-success">
+          ENVIAR PETICIÓN
+        </button>
+      </div>
+    </div>
+
+    <!-- Sección para mostrar el prompt generado -->
+    <div class="row mb-4">
+     
+    </div>
+
+    <!-- Sección para mostrar la respuesta de la IA -->
+    <div class="row">
+      <div class="col-12">
+        <h5>Respuesta de la IA</h5>
+        <div
+          id="respuesta"
+          class="border p-3 rounded"
+          style="min-height: 100px;"
+        ></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts de Bootstrap -->
+  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+  <script>
+    // URL de tu API para cargar los "contextos" dinámicamente
+    const API_CONTEXTS_URL = 'http://localhost:3000/contextos';
+    const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=AIzaSyDyHz6VsJBDWVYk8_rSKeuONOGHsgOKkX0";
+    
+    /**
+     * Función que carga la lista de contextos (parámetros de viaje)
+     * desde tu servidor local o remoto (API_CONTEXTS_URL).
+     */
+    async function cargarContextos() {
+      try {
+        const response = await fetch(API_CONTEXTS_URL);
+        const contextos = await response.json();
+        
+        // Generamos el HTML dinámico
+        let html = '';
+        for (let i = 0; i < contextos.length; i++) {
+          const contexto = contextos[i];
+          // Cada contexto se mostrará como un "form-group" de Bootstrap
+          html += `<div class="contexto col-md-4 form-group">
+                    <label><strong>${contexto.nombre}:</strong></label><br>`;
+
+          // Si el tipo de control es "select"
+          if (contexto.tipo_control === 'select') {
+            html += `<select id="${contexto.nombre}" class="form-control w-auto d-inline-block">`;
+            for (let j = 0; j < contexto.opciones.length; j++) {
+              const opcion = contexto.opciones[j];
+              html += `<option value="${opcion}">${opcion}</option>`;
+            }
+            html += `</select>`;
+          }
+          // Si el tipo de control es "radio"
+          else if (contexto.tipo_control === 'radio') {
+            for (let j = 0; j < contexto.opciones.length; j++) {
+              const opcion = contexto.opciones[j];
+              html += `
+                <div class="form-check form-check-inline">
+                  <input
+                    class="form-check-input"
+                    type="radio"
+                    name="${contexto.nombre}"
+                    value="${opcion}"
+                  >
+                  <label class="form-check-label">${opcion}</label>
+                </div>
+              `;
+            }
+          }
+          html += `</div>`;
+        }
+
+        document.getElementById('contenedor-contextos').innerHTML += html;
+      } catch (error) {
+        console.error("Error al cargar contextos:", error);
+      }
+    }
+
+    // Se llama a cargarContextos al inicializar la página
+    document.addEventListener('DOMContentLoaded', cargarContextos);
+
+    /**
+     * Función para construir un prompt más detallado
+     * en base a los datos recogidos (parámetros del viaje + texto extra).
+     */
+    function generarPromptElaborado(datos) {
+      /*
+        Aquí agregamos el texto adicional solicitado:
+        - Nota sobre la duración (días del viaje)
+        - Nota sobre viaje familiar (actividades para niños)
+        - Rango de precios en euros para cada presupuesto
+      */
+      let prompt = "Quiero planificar un viaje con estas características:\n\n";
+      
+      // Recorremos el objeto con los valores seleccionados
+      for (const clave in datos) {
+        if (clave !== "texto_personalizado") {
+          prompt += `- ${clave}: ${datos[clave]}\n`;
+        }
+      }
+
+      // Agregamos el texto personalizado del usuario
+      if (datos.texto_personalizado) {
+        prompt += `\nAdemás, me gustaría destacar lo siguiente: ${datos.texto_personalizado}\n`;
+      }
+
+      // Añadimos las aclaraciones pedidas
+      prompt += `
+          Recuerda:
+          - La duración hace referencia al número de días del viaje.
+          - Si el viaje es familiar, incluye actividades para niños.
+          - El rango de precios debe ser expresado en euros para cada presupuesto.
+          - devuelveme la respuesta en formato HTML dentro de un <p>, no utilizes Markdown
+                  `;
+
+      // Cerramos con la petición al modelo
+      prompt += "\n¿Podrías sugerirme un itinerario o plan de viaje que cumpla con estos requisitos?";
+
+      return prompt;
+    }
+
+    /**
+     * Al hacer clic en "GENERAR", recolectamos los datos
+     * de los inputs y creamos el prompt para la IA.
+     */
+    document.getElementById('generarPeticion').addEventListener('click', function() {
+      const contenedor = document.getElementById('contenedor-contextos');
+      const inputs = contenedor.querySelectorAll('input, select');
+      const resultado = {};
+
+      // Recorremos todos los inputs
+      for (let i = 0; i < inputs.length; i++) {
+        const input = inputs[i];
+
+        // Si es un radio y está marcado, lo guardamos
+        if (input.type === 'radio' && input.checked) {
+          resultado[input.name] = input.value;
+        }
+        // Si es un select, guardamos su valor
+        else if (input.tagName === 'SELECT') {
+          resultado[input.id] = input.value;
+        }
+      }
+      console.log("Esto es lo que le pasamos a la funcion de generar prompt", resultado);
+      // Tomamos el texto que el usuario introdujo
+      const textoPersonalizado = document.getElementById('texto-peticion').value;
+      resultado.texto_personalizado = textoPersonalizado;
+
+      // Generamos el prompt
+      const promptElaborado = generarPromptElaborado(resultado);
+     
+      // Mostramos el prompt en pantalla
+      document.getElementById('peticion').textContent = promptElaborado;
+    });
+
+    /**
+     * Función para hacer la consulta a la API de GOOGLE
+     * Retorna la respuesta (o null si hay error).
+     */
+    async function query(data) {
+      try {
+        document.getElementById('respuesta').innerHTML = "<img src='img/loading.gif' alt='Cargando...' />";
+        const response = await fetch(API_URL, {
+          method: "POST",
+          body: JSON.stringify(data),
+        });
+        const result = await response.json();
+        return result;
+      } catch (error) {
+        console.error("Error al llamar a la IA:", error);
+        return null;
+      }
+    }
+
+    /**
+     * Al hacer clic en "ENVIAR PETICION", tomamos el prompt generado
+     * y lo enviamos al modelo de IA para obtener una respuesta.
+     */
+    document.getElementById('enviarPeticion').addEventListener('click', function() {
+      const promptGenerado = document.getElementById('peticion').textContent;
+      
+      // Hacemos la llamada al modelo
+      const promptPeticion = {
+        "contents": [{
+                "parts":[{"text": promptGenerado}]
+        }]
+        }
+        
+      query(promptPeticion).then((response) => {
+        // Mostramos la respuesta
+        if (response) {
+          respuesta = response.candidates[0].content.parts[0].text;
+          document.getElementById('respuesta').innerHTML = respuesta;
+        } else {
+          document.getElementById('respuesta').textContent = "Hubo un error al obtener la respuesta.";
+        }
+      });
+    });
+
+    
+  </script>
+</body>
+</html>

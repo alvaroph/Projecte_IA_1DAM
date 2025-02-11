@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CRUD de Contextos</title>
+
+  <!-- Bootstrap CSS -->
+  <link
+    rel="stylesheet"
+    href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+  />
+
+  <script>
+    const API_URL = "http://localhost:3000/contextos";
+
+    /**
+     * Cargar contextos y mostrarlos en la tabla
+     */
+    async function cargarContextos() {
+      try {
+        const response = await fetch(API_URL);
+        const contextos = await response.json();
+
+        const tabla = document.getElementById("tabla-contextos");
+        // Encabezados de la tabla
+        tabla.innerHTML = `
+          <thead class="thead-dark">
+            <tr>
+              <th scope="col">ID</th>
+              <th scope="col">Nombre</th>
+              <th scope="col">Tipo Control</th>
+              <th scope="col">Opciones</th>
+              <th scope="col">Texto Contexto</th>
+              <th scope="col">Acciones</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        `;
+
+        const tbody = tabla.querySelector("tbody");
+
+        // Insertar filas dinámicamente
+        contextos.forEach((contexto) => {
+          const fila = document.createElement("tr");
+
+          // Creamos las celdas
+          fila.innerHTML = `
+            <td>${contexto.id}</td>
+            <td>${contexto.nombre}</td>
+            <td>${contexto.tipo_control}</td>
+            <td>${contexto.opciones.join(", ")}</td>
+            <td>${contexto.texto_contexto}</td>
+            <td>
+              <button class="btn btn-sm btn-warning" onclick="editarContexto(${contexto.id})">Editar</button>
+              <button class="btn btn-sm btn-danger ml-1" onclick="eliminarContexto(${contexto.id})">Eliminar</button>
+            </td>
+          `;
+          tbody.appendChild(fila);
+        });
+      } catch (error) {
+        console.error("Error al cargar contextos:", error);
+      }
+    }
+
+    /**
+     * Agregar un nuevo contexto
+     */
+    async function agregarContexto() {
+      const nombre = document.getElementById("nombre").value;
+      const tipo_control = document.getElementById("tipo_control").value;
+      const opciones = document.getElementById("opciones").value.split(",");
+      const texto_contexto = document.getElementById("texto_contexto").value;
+
+      const nuevoContexto = {
+        nombre: nombre,
+        tipo_control: tipo_control,
+        opciones: opciones,
+        texto_contexto: texto_contexto,
+      };
+
+      await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(nuevoContexto),
+      });
+
+      limpiarFormulario();
+      cargarContextos();
+    }
+
+    /**
+     * Limpiar el formulario tras agregar o si se desea reestablecer
+     */
+    function limpiarFormulario() {
+      document.getElementById("nombre").value = "";
+      document.getElementById("tipo_control").value = "select";
+      document.getElementById("opciones").value = "";
+      document.getElementById("texto_contexto").value = "";
+    }
+
+    /**
+     * Editar un contexto existente (usando prompt para simplificar)
+     */
+    async function editarContexto(id) {
+      const nuevoNombre = prompt("Nuevo nombre:");
+      if (nuevoNombre === null) return; // Si el usuario canceló, salimos
+
+      const nuevoTipoControl = prompt("Nuevo tipo de control (select, radio):");
+      if (nuevoTipoControl === null) return;
+
+      const nuevasOpcionesStr = prompt("Nuevas opciones (separadas por coma):");
+      if (nuevasOpcionesStr === null) return;
+      const nuevasOpciones = nuevasOpcionesStr.split(",");
+
+      const nuevoTextoContexto = prompt("Nuevo texto contexto:");
+      if (nuevoTextoContexto === null) return;
+
+      const contextoActualizado = {
+        nombre: nuevoNombre,
+        tipo_control: nuevoTipoControl,
+        opciones: nuevasOpciones,
+        texto_contexto: nuevoTextoContexto,
+      };
+
+      await fetch(`${API_URL}/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(contextoActualizado),
+      });
+
+      cargarContextos();
+    }
+
+    /**
+     * Eliminar un contexto de la lista
+     */
+    async function eliminarContexto(id) {
+      if (confirm("¿Seguro que deseas eliminar este contexto?")) {
+        await fetch(`${API_URL}/${id}`, { method: "DELETE" });
+        cargarContextos();
+      }
+    }
+
+    // Al cargar el DOM, llamamos a la función para mostrar la lista de contextos
+    document.addEventListener("DOMContentLoaded", cargarContextos);
+  </script>
+</head>
+<body>
+  <!-- Contenedor principal de Bootstrap -->
+  <div class="container my-4">
+    <!-- Título principal -->
+    <h1 class="text-center mb-4">CRUD de Contextos</h1>
+
+    <!-- Fila para el formulario de "Agregar Contexto" -->
+    <div class="row">
+      <div class="col-md-6 offset-md-3">
+        <div class="card mb-4">
+          <div class="card-header">
+            <h2 class="h5 m-0">Agregar Contexto</h2>
+          </div>
+          <div class="card-body">
+            <form onsubmit="event.preventDefault(); agregarContexto();">
+              <div class="form-group">
+                <label for="nombre">Nombre:</label>
+                <input
+                  type="text"
+                  id="nombre"
+                  class="form-control"
+                  required
+                />
+              </div>
+
+              <div class="form-group">
+                <label for="tipo_control">Tipo Control:</label>
+                <select id="tipo_control" class="form-control">
+                  <option value="select">Select</option>
+                  <option value="radio">Radio</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="opciones">Opciones (separadas por coma):</label>
+                <input
+                  type="text"
+                  id="opciones"
+                  class="form-control"
+                  required
+                />
+              </div>
+
+              <div class="form-group">
+                <label for="texto_contexto">Texto Contexto:</label>
+                <input
+                  type="text"
+                  id="texto_contexto"
+                  class="form-control"
+                  required
+                />
+              </div>
+
+              <button type="submit" class="btn btn-primary w-100">
+                Agregar
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fila para la tabla de "Lista de Contextos" -->
+    <div class="row">
+      <div class="col-12">
+        <h2 class="h4">Lista de Contextos</h2>
+        <div class="table-responsive">
+          <table
+            id="tabla-contextos"
+            class="table table-bordered table-hover"
+          >
+            <!-- Contenido llenado por JavaScript -->
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS (Opcional, para ciertas funcionalidades) -->
+  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>

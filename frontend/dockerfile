@@ -1,0 +1,8 @@
+# Usamos la imagen oficial de Nginx
+FROM nginx:alpine
+
+# Copiamos los archivos estáticos al directorio de Nginx
+COPY . /usr/share/nginx/html
+
+# Exponemos el puerto 80 dentro del contenedor (será mapeado al 2000 en el host)
+EXPOSE 80
